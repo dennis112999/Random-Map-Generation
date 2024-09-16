@@ -37,7 +37,7 @@ namespace MapGenerator
 
         private void OnValidate()
         {
-            if (!Application.isPlaying) return;
+            //if (!Application.isPlaying) return;
 
             transform.localScale = new Vector3(currentLevelConfig.MapSize, currentLevelConfig.MapSize, currentLevelConfig.MapSize);
 
