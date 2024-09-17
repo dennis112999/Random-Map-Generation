@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEditor;
 
 namespace MapGenerator
@@ -6,6 +6,8 @@ namespace MapGenerator
     [CustomEditor(typeof(RandomMapGenerator))]
     public class RandomMapGeneratorEditor : Editor
     {
+        public string MapName = "Map";
+
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
@@ -25,6 +27,28 @@ namespace MapGenerator
             }
 
             GUILayout.EndHorizontal();
+
+            GUILayout.Space(10);
+
+            GUILayout.BeginVertical();
+
+            MapName = EditorGUILayout.TextField("Map Name", MapName);
+
+            GUILayout.BeginHorizontal();
+
+            if (GUILayout.Button("Save Map"))
+            {
+                generator.SaveMap(MapName);
+            }
+
+            if (GUILayout.Button("Load Map"))
+            {
+                generator.LoadMap(MapName);
+            }
+
+            GUILayout.EndHorizontal();
+
+            GUILayout.EndVertical();
         }
     }
 

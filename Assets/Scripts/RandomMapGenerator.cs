@@ -1,3 +1,4 @@
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace MapGenerator
@@ -26,24 +27,35 @@ namespace MapGenerator
     /// </summary>
     public class RandomMapGenerator : MonoBehaviour
     {
-        public LevelConfig currentLevelConfig;
+        public LevelConfig CurrentLevelConfig;
+
+        private GameObject _mapContainer;
 
         #region MonoBehaviour
 
         private void Awake()
         {
-            GenerateMap(currentLevelConfig);
+            if (transform.childCount > 0)
+            {
+                _mapContainer = transform.GetChild(0).gameObject;
+            }
+            else
+            {
+                Debug.Log("There are no child objects.");
+            }
         }
 
         private void OnValidate()
         {
             //if (!Application.isPlaying) return;
 
-            transform.localScale = new Vector3(currentLevelConfig.MapSize, currentLevelConfig.MapSize, currentLevelConfig.MapSize);
+            transform.localScale = new Vector3(CurrentLevelConfig.MapSize, CurrentLevelConfig.MapSize, CurrentLevelConfig.MapSize);
 
-            foreach (Transform child in transform)
+            if (_mapContainer == null) return;
+
+            foreach (Transform child in _mapContainer.transform)
             {
-                SetCubeY(child.gameObject, currentLevelConfig);
+                SetCubeY(child.gameObject, CurrentLevelConfig);
             }
         }
 
@@ -55,19 +67,29 @@ namespace MapGenerator
         /// <param name="config"></param>
         private void GenerateMap(LevelConfig config)
         {
-            transform.localScale = new Vector3(config.MapSize, config.MapSize, config.MapSize);
+            _mapContainer = new GameObject("MapContainer");
+            _mapContainer.transform.SetParent(transform, false);
+            _mapContainer.transform.localPosition = Vector3.zero;
+            _mapContainer.transform.localScale = new Vector3(config.MapSize, config.MapSize, config.MapSize);
 
             for (int x = 0; x < config.Width; x++)
             {
                 for (int z = 0; z < config.Depth; z++)
                 {
                     GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                    cube.transform.SetParent(transform, false);
+                    cube.transform.SetParent(_mapContainer.transform, false);
                     cube.transform.localPosition = new Vector3(x, 0, z);
 
                     if (!config.NeedCollider)
                     {
-                        Destroy(cube.GetComponent<BoxCollider>());
+                        if (Application.isPlaying)
+                        {
+                            Destroy(cube.GetComponent<BoxCollider>());
+                        }
+                        else
+                        {
+                            DestroyImmediate(cube.GetComponent<BoxCollider>());
+                        }
                     }
 
                     SetCubeY(cube, config);
@@ -172,8 +194,108 @@ namespace MapGenerator
         {
             float ratio = Mathf.Clamp01(height / config.MaxHeight);
             Color color = Color.Lerp(Color.red, Color.green, ratio);
-            cube.GetComponent<MeshRenderer>().material.color = color;
+
+            Renderer renderer = cube.GetComponent<Renderer>();
+
+            if (Application.isPlaying)
+            {
+                renderer.material.color = color;
+            }
+            else
+            {
+                renderer.sharedMaterial.color = color;
+            }
         }
+
+        /// <summary>
+        /// Clear up the current map 
+        /// </summary>
+        public void ClearMap()
+        {
+            List<Transform> children = new List<Transform>();
+
+            foreach (Transform child in transform)
+            {
+                children.Add(child);
+            }
+
+            foreach (Transform child in children)
+            {
+                DestroyImmediate(child.gameObject);
+            }
+        }
+
+#if UNITY_EDITOR
+
+        #region For Unity Editor
+
+        /// <summary>
+        /// Editor Use - Gemerate Map
+        /// </summary>
+        public void GenerateMap()
+        {
+            GenerateMap(CurrentLevelConfig);
+        }
+
+        /// <summary>
+        /// Editor Use - Save Map and export Map to the Resources file
+        /// </summary>
+        /// <param name="fileName">File Name</param>
+        public void SaveMap(string fileName)
+        {
+            if (Application.isPlaying) return;
+
+            if (_mapContainer != null)
+            {
+                foreach (Transform child in _mapContainer.transform)
+                {
+                    Renderer renderer = child.GetComponent<Renderer>();
+                    if (renderer != null)
+                    {
+                        renderer.sharedMaterial = renderer.material;
+                    }
+                }
+
+                MapSaveUtility mapSaveUtility = new MapSaveUtility();
+                mapSaveUtility.SaveMap(_mapContainer, fileName);
+            }
+            else
+            {
+                Debug.LogWarning("MapContainer is null, generate the map first before saving.");
+            }
+        }
+
+        /// <summary>
+        /// Editor Use - Load Map
+        /// </summary>
+        /// <param name="fileName">File Name</param>
+        public void LoadMap(string fileName)
+        {
+            if (Application.isPlaying) return;
+
+            ClearMap();
+
+            MapSaveUtility mapSaveUtility = new MapSaveUtility();
+            GameObject loadedPrefab = mapSaveUtility.LoadMap(fileName);
+
+            if (loadedPrefab != null)
+            {
+                GameObject loadedMap = Instantiate(loadedPrefab);
+
+                loadedMap.transform.SetParent(transform);
+                loadedMap.transform.localPosition = Vector3.zero;
+
+                _mapContainer = loadedMap;
+            }
+            else
+            {
+                Debug.LogWarning("Failed to load map.");
+            }
+        }
+
+        #endregion For Unity Editor
+
+#endif
 
     }
 }
