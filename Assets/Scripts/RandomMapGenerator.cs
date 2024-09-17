@@ -252,7 +252,14 @@ namespace MapGenerator
                     Renderer renderer = child.GetComponent<Renderer>();
                     if (renderer != null)
                     {
-                        renderer.sharedMaterial = renderer.material;
+                        if (Application.isPlaying)
+                        {
+                            renderer.sharedMaterial = renderer.material;
+                        }
+                        else
+                        {
+                            renderer.sharedMaterial = renderer.sharedMaterial;
+                        }
                     }
                 }
 
